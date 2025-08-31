@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<!-- SEO básico -->
+<meta name="title" content="Agro Kit - Monitoreo de Sensores e Índices de Vegetación">
+<meta name="description" content="Agro Kit es una plataforma para el monitoreo de sensores agrícolas y análisis de índices de vegetación como NDVI, EVI, SAVI, entre otros. Optimiza el control de cultivos en tiempo real.">
+<meta name="keywords" content="Agro Kit, agricultura inteligente, sensores, NDVI, EVI, SAVI, monitoreo agrícola, IoT agrícola, índices de vegetación, control de cultivos">
+<meta name="author" content="Agro Kit Team">
+<meta name="robots" content="index, follow">
+<meta name="language" content="es">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tusitio.com/">
+<meta property="og:title" content="Agro Kit - Monitoreo de Sensores e Índices de Vegetación">
+<meta property="og:description" content="Supervisa tus cultivos en tiempo real con sensores agrícolas e índices de vegetación como NDVI, EVI y SAVI.">
+<meta property="og:image" content="https://tusitio.com/img/Texto-del-parrafo-og.png">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://tusitio.com/">
+<meta name="twitter:title" content="Agro Kit - Monitoreo de Sensores e Índices de Vegetación">
+<meta name="twitter:description" content="Plataforma de monitoreo agrícola con sensores IoT e índices de vegetación.">
+<meta name="twitter:image" content="https://tusitio.com/img/Texto-del-parrafo-og.png">
+<link rel="icon" href="./img/Texto del párrafo (4) (1).png" type="image/x-icon">
+
+<title>Agro Kit</title>
+<style>
+/* --- tu CSS original (lo mantuve tal cual salvo pequeños ajustes para la UI dinámica) --- */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+body { background: #fff; color: #1a2e1a; }
+/* Hero y header */
+.hero { position: relative; height: 90vh; background: url("./img/Texto\ del\ párrafo\ \(1\).png") no-repeat center center/cover; }
+.hero::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 30%; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, white 100%); }
+.header { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; }
+.header img { height: 50px; }
+.menu-btn { position: absolute; top: 20px; right: 20px; font-size: 28px; cursor: pointer; background: none; border: none; color: #0a2e0a; }
+/* Side menu */
+.side-menu { position: fixed; top: 0; right: -40%; width: 40%; height: 100%; background: #2e4d2e; color: white; padding: 40px 20px; transition: right 0.3s ease; z-index: 200; overflow-y:auto;}
+.side-menu.active { right: 0; }
+.close-btn { font-size: 24px; background: none; border: none; color: white; position: absolute; top: 20px; right: 20px; cursor: pointer; }
+.side-menu h3 { margin-top: 40px; font-size: 18px; color: #3cff3c; }
+.side-menu a { display: block; color: white; text-decoration: none; margin: 8px 0; }
+.side-menu a:hover { text-decoration: underline; }
+
+/* login form inside menu */
+.login-panel { margin-top: 18px; padding: 12px; background: rgba(0,0,0,0.08); border-radius: 8px; }
+.login-panel label { display:block; margin-top:8px; font-size:14px; }
+.login-panel input { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #333; }
+
+/* Search box (no tocar) */
+.search-box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; max-width: 600px; }
+.search-input { width: 100%; padding: 12px 20px; border-radius: 30px; border: none; font-size: 16px; }
+.results { margin-top: 10px; background: #1a2e1a; border-radius: 15px; overflow: hidden; display: none; }
+.results.active { display: block; }
+.results a { display: block; padding: 12px 15px; color: white; text-decoration: none; border-bottom: 1px solid #333; }
+.results a:hover { background: #2e4d2e; }
+
+.fondo-indice-de-vegetación{
+  background-image: url("img/Texto\ del\ párrafo.png");
+}
+
+.search-box {
+  position: relative;   /* referencia para los resultados */
+  display: inline-block; /* o block según tu layout */
+  width: 100%;           /* ajusta al ancho que quieras */
+}
+
+.results {
+  position: absolute;    /* ahora se queda dentro del .search-box */
+  top: 100%;             /* justo debajo del input */
+  left: 0;
+  right: 0;
+}
+
+/* Section & info */
+.section { padding: 40px 20px; background: #fff; }
+.section h2 { font-size: 24px; border-left: 4px solid green; padding-left: 10px; margin-bottom: 20px; }
+.info-general { position: relative; background-image: url(./img/Texto\ del\ párrafo.png); padding: 40px 20px; overflow: hidden; }
+.info-general h2 { font-size: 24px; border-left: 4px solid #00bf63; padding-left: 10px; margin-bottom: 20px; }
+.info-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("") repeat; opacity: 0.2; z-index: 0; }
+.chart-container { position: relative; z-index: 1; max-width: 700px; margin: 0 auto 40px; }
+
+/* Resumen panel */
+.data-summary { position: relative; z-index: 1; background: #113015; color: #fff; border-radius: 12px; padding: 20px; max-width: 900px; margin: 0 auto; }
+.data-summary h3 { font-size: 20px; margin-bottom: 15px; border-left: 4px solid #00ff00; padding-left: 8px; }
+.data-box { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.data-table { border-collapse: collapse; background: #536656; border-radius: 8px; overflow: hidden; width: 45%; min-width: 250px; }
+.data-table th, .data-table td { padding: 12px; text-align: center; border-bottom: 1px solid #445b44; color: #fff; }
+.data-table th { background: #00bf63; color: #fff; }
+.data-text { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.data-text p { font-size: 14px; margin-bottom: 20px; }
+.download-btn { background: #00bf63; color: #fff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; }
+.download-btn:hover { background: #02af5b; color: #fff; }
+
+/* Info individual cards (sin tocar) */
+.info-individual { position: relative; background: url("./img/Texto\ del\ párrafo.png") no-repeat center/cover; padding: 60px 20px; text-align: center; }
+.info-individual h2 { font-size: 24px; border-left: 4px solid #00bf63; padding-left: 10px; margin-bottom: 30px; text-align: left; color: #113015; position: relative; z-index: 2; }
+.gradient-top { position: absolute; top: 0; left: 0; height: 30%; width: 100%; background: linear-gradient(to bottom, white 0%, transparent 100%); z-index: 1; }
+.cards-container { display: flex; flex-direction: row; justify-content: center; gap: 40px; flex-wrap: wrap; margin-bottom: 40px; position: relative; z-index: 2; }
+.info-card { flex: 1; min-width: 250px; max-width: 320px; height: 400px; border-radius: 20px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #00ff00; font-size: 22px; font-weight: bold; position: relative; overflow: hidden; transition: transform 0.3s ease, opacity 0.3s ease; }
+.info-card:hover { transform: scale(1.03); opacity: 0.95; }
+.tierra-card { background: #4d3b25; background-image: url("iconos-tierra.png"); background-size: cover; background-position: center; }
+.ambiente-card { background: #113015; background-image: url("iconos-ambiente.png"); background-size: cover; background-position: center; }
+
+/* small helpers */
+.controls-row { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+.badge { background:#e7f7e7; padding:6px 10px; border-radius:8px; color:#113015; }
+.primary { background:#00bf63; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+.small { font-size:13px; color:#e0e0e0; }
+.table-outer { width:100%; margin-top:12px; border-collapse:collapse; }
+.table-outer th, .table-outer td { padding:8px; border:1px solid #ddd; }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="header">
+    <img src="./img/Texto del párrafo (4) (1).png" alt="Agro Kit">
+  </div>
+  <button class="menu-btn" id="openMenu">☰</button>
+
+  <!-- Buscador (no tocar) -->
+  <div class="search-box">
+    <input type="text" id="search" class="search-input" placeholder="Buscar...">
+    <div id="results" class="results"></div>
+  </div>
+</div>
+
+<!-- Menú hamburguesa -->
+<div class="side-menu" id="sideMenu">
+  <button class="close-btn" id="closeMenu">✖</button>
+  <h3>AgroKit</h3>
+  
+  <a href="#informacion-general">Información General</a>
+  <a href="#informacion-individual">Información Individual</a>
+  <a href="nosotros.html">Nosotros</a>
+  <h3>Sensores</h3>
+  <a href="tierrra.html#sen-hume-tierra">Sensor de Humedad de tierra</a>
+  <a href="tierrra.html#sen-temp-suelo">Sensor de temperatura de suelo</a>
+  <a href="tierrra.html#sen-agua">Sensor de Agua</a>
+
+  <a href="aire.html#sen-humedad-aire">Sensor de Humedad de aire</a>
+  <a href="aire.html#sec-temp-amb">Sensor de Temperatura</a>
+  <a href="aire.html#sec-luz">Sensor de luz</a>
+  <a href="aire.html#sec-presion">Sensor de presión atmosférica</a>
+  <h3>Índices de Vegetación</h3>
+  <a href="#ndvi">NDVI</a>
+  <a href="#evi">EVI</a>
+  <a href="#savi">SAVI</a>
+  <a href="#arvi">ARVI</a>
+  <a href="#sipi">SIPI</a>
+  <h3>Cuenta</h3>
+  <!-- LOGIN / REGISTER PANEL -->
+  <div class="login-panel" id="authPanel">
+    <label for="authMode">Acción:</label>
+    <select id="authMode">
+      <option value="login">Login</option>
+      <option value="register">Register</option>
+    </select>
+
+    <label for="username">Usuario</label>
+    <input id="username" type="text" placeholder="usuario">
+
+    <label for="password">Contraseña</label>
+    <input id="password" type="password" placeholder="contraseña">
+
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <button id="btnAuth" class="primary">Enviar</button>
+      <button id="btnLogout" style="background:#ff6b6b;border:none;padding:8px 12px;border-radius:6px;color:white;cursor:pointer;">Logout</button>
+    </div>
+
+    <div id="authMsg" style="margin-top:10px;color:#ffe; font-size:14px;"></div>
+  </div>
+
+  
+</div>
+
+<!-- Sección Información General -->
+<div class="section info-general" id="informacion-general">
+  <h2>Información General</h2>
+  <div class="info-background"></div>
+
+  <!-- Controles: selector de kit -->
+  <div style="max-width:900px;margin:0 auto 18px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <label class="small">Kit:</label>
+      <select id="agrokitSelect">
+        <option value="KIT123">KIT123</option>
+      </select>
+      <button id="btnRefresh" class="primary">Refrescar</button>
+    </div>
+    <div>
+      <span class="badge" id="userBadge">No logueado</span>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div class="chart-container">
+    <canvas id="generalChart"></canvas>
+  </div>
+
+  <!-- Resumen de datos -->
+  <div class="data-summary">
+    <h3>Resumen de datos: <span id="fechaSpan">(hoy)</span></h3>
+    <div class="data-box">
+      <table class="data-table">
+        <thead><tr><th>Sensor</th><th>Valor</th></tr></thead>
+        <tbody class="table-body">
+          <!-- filas dinámicas -->
+        </tbody>
+      </table>
+
+      <div class="data-text">
+        <p id="resumenText">Cargando...</p>
+        <div style="margin-top:12px">
+          <button class="download-btn" id="downloadBtn">Descargar Archivo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sección Información Individual -->
+<div class="section info-individual" id="informacion-individual">
+  <div class="gradient-top"></div>
+  <h2>Información Individual</h2>
+  <div class="cards-container">
+    <a href="tierrra.html" class="info-card tierra-card"><span>Tierra</span></a>
+    <a href="aire.html" class="info-card ambiente-card"><span>Ambiente</span></a>
+  </div>
+  
+</div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Earth Engine JS API (opcional, para datos en tiempo real) -->
+  <script src="https://www.gstatic.com/earthengine/ee_api_js.js"></script>
+
+  <style>
+    :root{
+      --verde:#00bf63;
+      --verde-osc:#0e4a2d;
+      --gris:#e6eae6;
+      --oscuro:#113015;
+      --chip:#1f3d1f;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--oscuro);
+      background: #fff;
+    }
+
+    /* ===== TÍTULO DE SECCIÓN ===== */
+    .section-wrap{
+      padding: 24px 16px 40px;
+      background: url("fondo-icons.png") repeat;
+    }
+    .title{
+      max-width: 1200px;
+      margin: 0 auto 12px;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--oscuro);
+      border-left: 6px solid var(--verde);
+      padding-left: 10px;
+      text-shadow: 0 1px 0 #fff;
+    }
+
+    /* ===== NAV LOCAL DE ÍNDICES ===== */
+    .indices-nav{
+      max-width: 1200px;
+      margin: 0 auto 18px;
+      background: #0d2e1c;
+      border-radius: 999px;
+      box-shadow: 0 10px 20px rgba(0,0,0,.08) inset;
+      padding: 6px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+    .indices-nav button{
+      flex: 1 0 auto;
+      border: 0;
+      background: transparent;
+      color: #a6e6bf;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s ease, background .2s, color .2s;
+      white-space: nowrap;
+    }
+    .indices-nav button:hover{
+      transform: translateY(-1px);
+      background: #154c31;
+      color: #d7ffe6;
+    }
+    .indices-nav button.active{
+      background: var(--verde);
+      color: #0b2a19;
+    }
+
+    /* ===== LAYOUT MAPA + LEYENDA ===== */
+    .content{
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(4px);
+      border-radius: 16px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1.4fr .9fr;
+      gap: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    }
+    @media (max-width: 900px){
+      .content{
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* MAPA */
+    #map{
+      width: 100%;
+      min-height: 420px;
+      border-radius: 14px;
+      overflow: hidden;
+      outline: 2px solid #cfe8d8;
+    }
+
+    /* Panel derecha (leyenda + texto) */
+    .panel{
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .legend-card{
+      background: #0d2e1c;
+      color: #fff;
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 62px 1fr;
+      gap: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.18);
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .legend-card.fade{
+      opacity: 0; transform: translateY(6px);
+    }
+
+    .legend-head{
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      border-left: 4px solid var(--verde);
+      padding-left: 8px;
+    }
+    .legend-title{
+      font-size: 22px; font-weight: 800;
+    }
+    .legend-sub{
+      font-size: 12px; opacity: .85;
+    }
+
+    .legend-bar{
+      display: flex; flex-direction: column;
+      align-items: center; gap: 6px;
+    }
+    .grad{
+      width: 20px; height: 220px; border-radius: 8px; outline: 1px solid rgba(255,255,255,.25);
+    }
+    .scale{ display:flex; flex-direction:column; justify-content:space-between; height:220px; padding:2px 0; }
+    .tick{ font-size:12px; opacity:.9 }
+    .desc{
+      grid-column: 1 / -1;
+      font-size: 14px; line-height: 1.45;
+      background: #123a25; border-radius: 10px; padding: 10px;
+    }
+    .bullets{
+      grid-column: 2 / -1;
+      font-size: 13px; line-height: 1.35;
+      margin-top: -4px;
+    }
+    .bullets li{ margin: 6px 0; }
+
+    /* Gradientes por índice (solo referencia visual) */
+    .grad-ndvi { background: linear-gradient(180deg, #1f9f45 0%, #f2c64b 50%, #c3382f 100%); }
+    .grad-evi  { background: linear-gradient(180deg, #1d7a3a 0%, #9c824d 50%, #6b4a2b 100%); }
+    .grad-savi { background: linear-gradient(180deg, #3bc46a 0%, #a98a56 100%); }
+    .grad-gndvi{ background: linear-gradient(180deg, #2fb34f 0%, #d86b3b 100%); }
+    .grad-ndwi { background: linear-gradient(180deg, #6bd0ff 0%, #003b86 100%); }
+
+    /* Barra de búsqueda */
+    .search-row{
+      display:flex; gap:8px; align-items:center; margin-top: 8px;
+    }
+    .search-row input{
+      flex:1; padding:10px 12px; border-radius: 10px; border:1px solid #cfe8d8; font-size:14px;
+    }
+    .search-row button{
+      background: var(--verde); color:#0b2a19; border:0; padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer;
+    }
+
+    .chip{
+      font-size: 12px; color:#a1ffc9; background:#183f2a; padding:4px 8px; border-radius:999px; display:inline-block; margin-left:auto;
+    }
+
+    /* Aviso GEE */
+    .gee-badge{
+      position:absolute; top:10px; right:10px; background:#0d2e1c; color:#a1ffc9; padding:6px 10px; border-radius: 999px; font-size:12px; z-index: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+  </style>
+
+
+  <section class="section-wrap" id="indices-vegetacion">
+    <h2 class="title">Índices de Vegetación</h2>
+<div class="fondo-indice-de-vegetación">
+    <!-- NAV LOCAL -->
+    <nav class="indices-nav" id="indicesNav">
+      <button data-index="ndvi" id="ndvi" class="active">NDVI</button>
+      <button data-index="evi" id="ndvi">EVI</button>
+      <button data-index="savi" id="ndvi">SAVI</button>
+      <button data-index="gndvi" id="ndvi">GNDVI</button>
+      <button data-index="ndwi" id="ndvi">NDWI</button>
+    </nav>
+
+    <div class="content">
+      <!-- MAPA -->
+      <div style="position:relative">
+        <div id="map" style="max-height: 100px;"></div>
+        <div id="geeState" class="gee-badge">GEE: desconectado</div>
+        <div class="search-row" style="position:absolute; left:10px; bottom:10px; right:10px;">
+          <input id="addr" type="text" placeholder="Buscar dirección o lugar…" />
+          <button id="go">Ir</button>
+        </div>
+      </div>
+
+      <!-- LEYENDA -->
+      <aside class="panel">
+        <div id="legend" class="legend-card">
+          <div class="legend-head">
+            <div class="legend-title" id="legendTitle">NDVI</div>
+            <div class="legend-sub" id="legendSub">(Normalized Difference Vegetation Index)</div>
+            <span class="chip" id="legendChip">Rango: -1 a 1</span>
+          </div>
+
+          <div class="legend-bar">
+            <div id="legendGrad" class="grad grad-ndvi"></div>
+          </div>
+
+          <div class="scale" id="legendTicks">
+            <div class="tick">1</div>
+            <div class="tick">0</div>
+            <div class="tick">-1</div>
+          </div>
+
+          <div class="desc" id="legendDesc">
+            El NDVI estima la “verdor” de la vegetación usando el contraste entre el infrarrojo cercano (NIR) y el rojo. Valores altos indican vegetación sana y densa.
+          </div>
+          <ul class="bullets" id="legendBullets">
+            <li>&lt; 0.1: agua, construcciones o suelo desnudo.</li>
+            <li>0.1 – 0.2: suelo expuesto o vegetación muy escasa.</li>
+            <li>&gt; 0.2: vegetación (a mayor valor, mayor vigor).</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>
+  <script>
+    /**********************
+     * CONFIGURACIÓN GEE
+     **********************/
+    const GEE_CLIENT_ID = "PON_AQUI_TU_CLIENT_ID"; // <- reemplaza cuando tengas tu OAuth Client ID
+    let geeReady = false;
+    let currentEeLayer = null;
+
+    // Paletas y metadatos por índice (para leyenda y visualización)
+    const INDEX_INFO = {
+      ndvi: {
+        title: "NDVI",
+        sub: "(Normalized Difference Vegetation Index)",
+        chip: "Rango: -1 a 1",
+        gradClass: "grad-ndvi",
+        ticks: ["1","0","-1"],
+        desc: "El NDVI usa NIR y rojo para estimar vigor de la vegetación.",
+        bullets: [
+          "< 0.1: agua, construcciones o suelo desnudo.",
+          "0.1–0.2: suelo expuesto o vegetación escasa.",
+          "> 0.2: vegetación (más alto = más sano)."
+        ],
+        // Visualización aproximada
+        vis:{min:-0.2, max:0.8, palette:["#c3382f","#f2c64b","#1f9f45"]}
+      },
+      evi: {
+        title: "EVI",
+        sub: "(Enhanced Vegetation Index)",
+        chip: "Rango: -1 a 1",
+        gradClass: "grad-evi",
+        ticks: ["1","0","-1"],
+        desc: "El EVI mejora el NDVI en zonas densas, corrigiendo atmósfera y suelo.",
+        bullets: [
+          "< 0.1: poca vegetación.",
+          "0.1–0.3: vegetación moderada.",
+          "> 0.3: vegetación densa y vigorosa."
+        ],
+        vis:{min:0, max:0.6, palette:["#6b4a2b","#9c824d","#1d7a3a"]}
+      },
+      savi: {
+        title: "SAVI",
+        sub: "(Soil Adjusted Vegetation Index)",
+        chip: "Rango: -1 a 1",
+        gradClass: "grad-savi",
+        ticks: ["1","0","-1"],
+        desc: "El SAVI reduce la influencia del suelo en áreas con cobertura vegetal baja.",
+        bullets: [
+          "< 0.1: suelo desnudo.",
+          "0.1–0.3: cobertura baja.",
+          "> 0.3: vegetación creciente."
+        ],
+        vis:{min:0, max:0.6, palette:["#a98a56","#3bc46a"]}
+      },
+      gndvi: {
+        title: "GNDVI",
+        sub: "(Green NDVI)",
+        chip: "Rango: -1 a 1",
+        gradClass: "grad-gndvi",
+        ticks: ["1","0","-1"],
+        desc: "El GNDVI usa banda verde y NIR; sensible al contenido de clorofila.",
+        bullets: [
+          "< 0.1: vegetación muy débil o suelo.",
+          "0.1–0.3: vegetación moderada.",
+          "> 0.3: buena actividad fotosintética."
+        ],
+        vis:{min:0, max:0.6, palette:["#d86b3b","#2fb34f"]}
+      },
+      ndwi: {
+        title: "NDWI",
+        sub: "(Normalized Difference Water Index)",
+        chip: "Rango: -1 a 1",
+        gradClass: "grad-ndwi",
+        ticks: ["1","0","-1"],
+        desc: "El NDWI resalta agua superficial usando verde y NIR (McFeeters).",
+        bullets: [
+          "< 0: suelo/vegetación.",
+          "≈ 0: mezcla.",
+          "> 0: agua (más alto = más probable)."
+        ],
+        vis:{min:-0.5, max:0.5, palette:["#003b86","#6bd0ff"]}
+      }
+    };
+
+    /**********************
+     * MAPA (Leaflet)
+     **********************/
+    const map = L.map('map', { zoomControl: true }).setView([ -12.05, -77.05 ], 12);
+    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:'&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Geocodificación simple con Nominatim
+    document.getElementById("go").addEventListener("click", () => {
+      const q = document.getElementById("addr").value.trim();
+      if(!q) return;
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
+        .then(r=>r.json())
+        .then(res=>{
+          if(res && res[0]){
+            map.setView([parseFloat(res[0].lat), parseFloat(res[0].lon)], 13);
+          }else{
+            alert("No se encontró la dirección.");
+          }
+        }).catch(()=>alert("Error al buscar ubicación."));
+    });
+
+    /**********************
+     * LEYENDA DINÁMICA
+     **********************/
+    function setLegend(idxKey){
+      const info = INDEX_INFO[idxKey];
+      // animación
+      const card = document.getElementById("legend");
+      card.classList.add("fade");
+      setTimeout(()=>{
+        document.getElementById("legendTitle").textContent = info.title;
+        document.getElementById("legendSub").textContent   = info.sub;
+        document.getElementById("legendChip").textContent  = info.chip;
+
+        const grad = document.getElementById("legendGrad");
+        grad.className = "grad " + info.gradClass;
+
+        const ticks = document.getElementById("legendTicks");
+        ticks.innerHTML = info.ticks.map(t => `<div class="tick">${t}</div>`).join("");
+
+        document.getElementById("legendDesc").textContent = info.desc;
+        document.getElementById("legendBullets").innerHTML =
+          info.bullets.map(b=>`<li>${b}</li>`).join("");
+
+        card.classList.remove("fade");
+      }, 180);
+    }
+
+    // Navbar
+    document.getElementById("indicesNav").addEventListener("click", (e)=>{
+      if(e.target.tagName !== "BUTTON") return;
+      document.querySelectorAll(".indices-nav button").forEach(b=>b.classList.remove("active"));
+      e.target.classList.add("active");
+      const key = e.target.dataset.index;
+      setLegend(key);
+      setMapIndex(key); // cambia capa GEE (o placeholder)
+    });
+
+    /**********************
+     * GEE helpers
+     **********************/
+    function geeSetBadge(text){ document.getElementById("geeState").textContent = text; }
+
+    // Añade una ee.Image como capa de teselas a Leaflet
+    function addEeLayer(eeImage, vis, name="ee-layer"){
+      return new Promise((resolve, reject)=>{
+        eeImage.getMap(vis, function(mapObj){
+          // mapObj: { mapid, token, urlFormat? }
+          // Construimos URL estándar
+          const url = `https://earthengine.googleapis.com/map/${mapObj.mapid}/{z}/{x}/{y}?token=${mapObj.token}`;
+          const layer = L.tileLayer(url, { attribution: 'Google Earth Engine' });
+          resolve(layer);
+        });
+      });
+    }
+
+    async function setMapIndex(idxKey){
+      // si no hay GEE, solo cambia la leyenda (fallback OSM)
+      if(!geeReady){
+        // (Opcional) podrías cambiar un estilo de OSM según índice
+        return;
+      }
+      try{
+        // Sentinel-2 superficie (S2 SR)
+        const col = ee.ImageCollection('COPERNICUS/S2_SR')
+          .filterBounds(ee.Geometry.BBox(map.getBounds().getWest(), map.getBounds().getSouth(),
+                                         map.getBounds().getEast(), map.getBounds().getNorth()))
+          .filterDate('2024-01-01','2024-12-31')
+          .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
+          .median();
+
+        // Bandas útiles
+        const RED  = col.select('B4');
+        const GREEN= col.select('B3');
+        const NIR  = col.select('B8');
+        const BLUE = col.select('B2');
+
+        let image, vis = INDEX_INFO[idxKey].vis;
+
+        // Cálculos
+        if(idxKey==='ndvi'){
+          image = NIR.subtract(RED).divide(NIR.add(RED)).rename('NDVI');
+        } else if(idxKey==='evi'){
+          // EVI = 2.5 * (NIR - RED) / (NIR + 6*RED - 7.5*BLUE + 1)
+          image = (NIR.subtract(RED))
+                    .multiply(2.5)
+                    .divide(NIR.add(RED.multiply(6)).subtract(BLUE.multiply(7.5)).add(1))
+                    .rename('EVI');
+        } else if(idxKey==='savi'){
+          // SAVI = (1 + L) * (NIR - RED) / (NIR + RED + L)  con L=0.5
+          const L = 0.5;
+          image = (NIR.subtract(RED))
+                    .multiply(1+L)
+                    .divide(NIR.add(RED).add(L))
+                    .rename('SAVI');
+        } else if(idxKey==='gndvi'){
+          image = NIR.subtract(GREEN).divide(NIR.add(GREEN)).rename('GNDVI');
+        } else if(idxKey==='ndwi'){
+          // NDWI (McFeeters) = (GREEN - NIR) / (GREEN + NIR)
+          image = GREEN.subtract(NIR).divide(GREEN.add(NIR)).rename('NDWI');
+        }
+
+        // Quitar capa anterior
+        if(currentEeLayer){ map.removeLayer(currentEeLayer); currentEeLayer = null; }
+        const layer = await addEeLayer(image, vis, idxKey.toUpperCase());
+        layer.addTo(map);
+        currentEeLayer = layer;
+      }catch(err){
+        console.error(err);
+        geeSetBadge("GEE: error de capa");
+      }
+    }
+
+    // Inicialización de Earth Engine (con popup OAuth)
+    function initGEE(){
+      try{
+        ee.data.authenticateViaPopup({
+          clientId: GEE_CLIENT_ID,
+          scope: ['https://www.googleapis.com/auth/earthengine.readonly']
+        }, () => {
+          ee.initialize(null, null, () => {
+            geeReady = true;
+            geeSetBadge("GEE: conectado");
+            setMapIndex('ndvi'); // primera capa
+          }, (e)=>{ console.warn(e); geeSetBadge("GEE: fallo init"); });
+        }, (e)=>{ console.warn(e); geeSetBadge("GEE: denegado"); });
+      }catch(e){
+        console.warn("EE no disponible, funcionando en modo básico.");
+        geeSetBadge("GEE: desconectado");
+      }
+    }
+
+    // Arranque
+    setLegend('ndvi');     // NDVI por defecto
+    initGEE();             // intenta conectar GEE
+  </script>
+
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+// UI helpers (menu + buscador no tocar)
+const menuBtn = document.getElementById('openMenu');
+const sideMenu = document.getElementById('sideMenu');
+const closeMenu = document.getElementById('closeMenu');
+menuBtn.addEventListener('click', () => { sideMenu.classList.add('active'); });
+closeMenu.addEventListener('click', () => { sideMenu.classList.remove('active'); });
+
+const searchInput = document.getElementById('search');
+const resultsBox = document.getElementById('results');
+
+  
+  // <a href="#informacion-general">Información General</a>
+  // <a href="#informacion-individual">Información Individual</a>
+
+  // <h3>Sensores</h3>
+  // <a href="tierrra.html#sen-hume-tierra">Sensor de Humedad de tierra</a>
+  // <a href="tierrra.html#sen-temp-suelo">Sensor de temperatura de suelo</a>
+  // <a href="tierrra.html#sen-agua">Sensor de Agua</a>
+
+  // <a href="aire.html#sen-humedad-aire">Sensor de Humedad de aire</a>
+  // <a href="aire.html#sec-temp-amb">Sensor de Temperatura</a>
+  // <a href="aire.html#sec-luz">Sensor de luz</a>
+  // <a href="aire.html#sec-presion">Sensor de presión atmosférica</a>
+  // <h3>Índices de Vegetación</h3>
+  // <a href="#ndvi">NDVI</a>
+
+const items = [
+  { name: "Información General", link: "#informacion-general" },
+  { name: "Información Individual", link: "#informacion-individual" },
+  { name: "Sensor de Humedad de tierra", link: "tierrra.html#sen-hume-tierra" },
+  { name: "Sensor de Agua", link: "tierrra.html#sen-agua" },
+  { name: "Sensor de humedad de aire", link: "aire.html#sen-humedad-aire" },
+  { name: "Sensor de Temperatura", link: "aire.html#sec-temp-amb" },
+  { name: "Sensor de Temperatura de suelo", link: "tierrra.html#sen-temp-suelo" },
+  { name: "Sensor de luz", link: "aire.html#sec-luz" },
+  { name: "Índices de Vegetación", link: "#ndvi" }
+];
+searchInput.addEventListener('input', () => {
+  const value = searchInput.value.toLowerCase();
+  resultsBox.innerHTML = "";
+  if (value) {
+    const filtered = items.filter(item => item.name.toLowerCase().includes(value) );
+    if (filtered.length > 0) {
+      resultsBox.classList.add("active");
+      filtered.forEach(item => {
+        const a = document.createElement("a");
+        a.href = item.link;
+        a.textContent = item.name;
+        resultsBox.appendChild(a);
+      });
+    } else {
+      resultsBox.classList.remove("active");
+    }
+  } else {
+    resultsBox.classList.remove("active");
+  }
+});
+
+// --------------------- App logic ---------------------
+const API_BASE = ""; // same host
+let token = localStorage.getItem("token") || null;
+
+const agrokitSelect = document.getElementById("agrokitSelect");
+const resumenText = document.getElementById("resumenText");
+const fechaSpan = document.getElementById("fechaSpan");
+const tableBody = document.querySelector(".table-body");
+const userBadge = document.getElementById("userBadge");
+const downloadBtn = document.getElementById("downloadBtn");
+
+function setUserBadge() {
+  userBadge.textContent = token ? "Usuario logueado" : "No logueado";
+}
+setUserBadge();
+
+// Chart setup (6 series)
+const ctx = document.getElementById('generalChart').getContext('2d');
+const generalChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Humedad Tierra', data: [], borderColor: '#00ff00', tension:0.2, fill:false },
+      { label: 'Temp Aire (°C)', data: [], borderColor: '#ff9900', tension:0.2, fill:false },
+      { label: 'Humedad Aire (%)', data: [], borderColor: '#00bfff', tension:0.2, fill:false },
+      { label: 'Temp Suelo (°C)', data: [], borderColor: '#ff00ff', tension:0.2, fill:false },
+      { label: 'Luz (%)', data: [], borderColor: '#ffd700', tension:0.2, fill:false },
+      { label: 'Presión (hPa)', data: [], borderColor: '#8888ff', tension:0.2, fill:false }
+    ]
+  },
+  options: {
+    responsive: true,
+    parsing: false,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { beginAtZero:false } }
+  }
+});
+
+// Sensores y reglas (umbrales coherentes)
+function evaluarSensor(sensor, valor) {
+  if (valor === null || valor === undefined || valor === "" || isNaN(Number(valor))) return "Sin dato";
+  valor = Number(valor);
+  switch (sensor) {
+    case "humedad_tierra":
+      if (valor < 20) return "Bajo";
+      if (valor > 60) return "Alto";
+      return "Bien";
+    case "temp_aire":
+      if (valor < 15) return "Bajo";
+      if (valor > 32) return "Alto";
+      return "Bien";
+    case "humedad_aire":
+      if (valor < 30) return "Bajo";
+      if (valor > 80) return "Alto";
+      return "Bien";
+    case "temp_suelo":
+      if (valor < 10) return "Bajo";
+      if (valor > 35) return "Alto";
+      return "Bien";
+    case "luz":
+      // si tu ESP envía 0-100 -> umbrales en %
+      if (valor < 30) return "Bajo";
+      if (valor > 80) return "Alto";
+      return "Bien";
+    case "presion":
+      if (valor < 1000) return "Baja";
+      if (valor > 1030) return "Alta";
+      return "Normal";
+    case "agua":
+      return valor > 0 ? "Hay agua" : "Sin agua";
+    default:
+      return "Normal";
+  }
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return "";
+  const iso = ts.replace(" ", "T");
+  const d = new Date(iso);
+  if (isNaN(d)) return ts;
+  return d.toLocaleString();
+}
+
+// Cargar lista de agrokits (requiere token)
+async function cargarAgrokits() {
+  try {
+    if (!token) return;
+    const res = await fetch(`${API_BASE}/api/agrokits`, { headers: { Authorization: `Bearer ${token}` }});
+    if (!res.ok) return;
+    const rows = await res.json();
+    agrokitSelect.innerHTML = "";
+    rows.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id_agrokit;
+      opt.textContent = r.id_agrokit;
+      agrokitSelect.appendChild(opt);
+    });
+  } catch(e) { console.error(e); }
+}
+
+// Cargar datos (últimos 20 registros) y actualizar UI
+async function cargarDatos() {
+  const id = agrokitSelect.value;
+  if (!id) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/sensores/${id}`);
+    if (!res.ok) throw new Error("Error al obtener datos");
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      resumenText.textContent = "No hay datos";
+      return;
+    }
+
+    // limitar últimos 20 (ya vienen ordenados desc)
+    const limited = data.slice(0,20);
+    const ordenado = limited.slice().reverse(); // antiguo -> nuevo
+
+    // actualizar chart
+    generalChart.data.labels = ordenado.map(r => formatTimestamp(r.timestamp));
+    generalChart.data.datasets[0].data = ordenado.map(r => r.humedad_tierra);
+    generalChart.data.datasets[1].data = ordenado.map(r => r.temp_aire);
+    generalChart.data.datasets[2].data = ordenado.map(r => r.humedad_aire);
+    generalChart.data.datasets[3].data = ordenado.map(r => r.temp_suelo);
+    generalChart.data.datasets[4].data = ordenado.map(r => r.luz);
+    generalChart.data.datasets[5].data = ordenado.map(r => r.presion);
+    generalChart.update();
+
+    // resumen (último = data[0])
+    const ultimo = data[0];
+    fechaSpan.textContent = formatTimestamp(ultimo.timestamp);
+    tableBody.innerHTML = "";
+    const filas = [
+      ["Humedad Tierra", ultimo.humedad_tierra, evaluarSensor("humedad_tierra", ultimo.humedad_tierra)],
+      ["Temp Aire (°C)", ultimo.temp_aire, evaluarSensor("temp_aire", ultimo.temp_aire)],
+      ["Humedad Aire (%)", ultimo.humedad_aire, evaluarSensor("humedad_aire", ultimo.humedad_aire)],
+      ["Temp Suelo (°C)", ultimo.temp_suelo, evaluarSensor("temp_suelo", ultimo.temp_suelo)],
+      ["Luz", ultimo.luz, evaluarSensor("luz", ultimo.luz)],
+      ["Presión (hPa)", ultimo.presion, evaluarSensor("presion", ultimo.presion)],
+      ["Agua", ultimo.agua, evaluarSensor("agua", ultimo.agua)],
+      ["Fecha / Hora", formatTimestamp(ultimo.timestamp), ""]
+    ];
+    filas.forEach(f => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${f[0]}</td><td>${f[1] !== null && f[1] !== undefined ? f[1] : '—'} ${f[2] ? `(${f[2]})` : ''}</td>`;
+      tableBody.appendChild(tr);
+    });
+
+    resumenText.textContent = `Último (${formatTimestamp(ultimo.timestamp)}): Humedad tierra ${evaluarSensor("humedad_tierra", ultimo.humedad_tierra)}, temp. ambiente ${evaluarSensor("temp_aire", ultimo.temp_aire)}, luz ${evaluarSensor("luz", ultimo.luz)}, presión ${evaluarSensor("presion", ultimo.presion)}.`;
+
+  } catch (e) {
+    console.error("Error cargarDatos:", e);
+    resumenText.textContent = "Error al cargar datos";
+  }
+}
+
+// Descargar Excel (requiere token)
+downloadBtn.addEventListener("click", async () => {
+  if (!token) return alert("Inicia sesión para descargar");
+  const id = agrokitSelect.value;
+  try {
+    const res = await fetch(`${API_BASE}/api/download/${id}`, { headers: { Authorization: `Bearer ${token}` }});
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || "Error descarga");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `agrokit_${id}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Error al descargar: " + e.message);
+  }
+});
+
+// --------------------- Auth (Login/Register) ---------------------
+const authMode = document.getElementById("authMode");
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+const btnAuth = document.getElementById("btnAuth");
+const btnLogout = document.getElementById("btnLogout");
+const authMsg = document.getElementById("authMsg");
+
+btnAuth.addEventListener("click", async () => {
+  const mode = authMode.value;
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value.trim();
+  if (!username || !password) { authMsg.textContent = "Completa usuario y contraseña"; return; }
+
+  try {
+    const url = `${API_BASE}/api/auth/${mode}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || j.msg || "Error auth");
+    if (mode === "login") {
+      token = j.token;
+      localStorage.setItem("token", token);
+      authMsg.style.color = "#bfffbf";
+      authMsg.textContent = "Login OK";
+      setUserBadge();
+      await cargarAgrokits();
+    } else {
+      authMsg.style.color = "#bfffbf";
+      authMsg.textContent = "Registro OK — ahora haz login";
+    }
+  } catch (e) {
+    authMsg.style.color = "#ffdede";
+    authMsg.textContent = "Error: " + e.message;
+  }
+});
+
+btnLogout.addEventListener("click", () => {
+  token = null;
+  localStorage.removeItem("token");
+  setUserBadge();
+  authMsg.textContent = "Sesión cerrada";
+});
+
+// --------------------- Socket.io (real-time) ---------------------
+const socket = io(); // asume mismo host: puerto
+
+socket.on("connect", () => {
+  console.log("Socket conectado:", socket.id);
+});
+
+socket.on("new-sensor", (row) => {
+  // si el nuevo dato pertenece al kit seleccionado, refrescar UI
+  const current = agrokitSelect.value;
+  if (row && row.id_agrokit === current) {
+    // Opciones: actualizar empíricamente (append) o recargar
+    // Para simplicidad y garantía coherencia, recargamos últimos datos
+    cargarDatos();
+  }
+});
+
+// --------------------- Otros controles ---------------------
+document.getElementById("btnRefresh").addEventListener("click", cargarDatos);
+agrokitSelect.addEventListener("change", cargarDatos);
+
+// initial load
+(async () => {
+  await cargarAgrokits();
+  await cargarDatos();
+  // no polling; actualizamos por socket en tiempo real
+})();
+</script>
+<!-- Footer -->
+<footer style="background:#2e4d2e; color:#f0f0f0; padding: 40px 20px; text-align:center; margin-top:50px;">
+  <div style="max-width:1200px; margin:0 auto; display:flex; flex-wrap:wrap; justify-content:space-between; gap:20px;">
+    
+    <!-- Logo / Nombre -->
+    <div style="flex:1; min-width:200px;">
+      <h2 style="color:#4CAF50; margin-bottom:10px;">🌱 Agro Kit</h2>
+      <p style="font-size:14px; line-height:1.5;">
+        Plataforma de monitoreo agrícola con sensores IoT e índices de vegetación.<br>
+        Optimiza tus cultivos con tecnología inteligente.
+      </p>
+    </div>
+
+    <!-- Navegación -->
+    <div style="flex:1; min-width:150px;">
+      <h3 style="margin-bottom:10px; font-size:16px;">Enlaces</h3>
+      <ul style="list-style:none; padding:0; font-size:14px; line-height:2;">
+        <li><a href="#inicio" style="color:#f0f0f0; text-decoration:none;">Inicio</a></li>
+        <li><a href="#sensores" style="color:#f0f0f0; text-decoration:none;">Sensores</a></li>
+        <li><a href="#indices" style="color:#f0f0f0; text-decoration:none;">Índices</a></li>
+        <li><a href="#contacto" style="color:#f0f0f0; text-decoration:none;">Contacto</a></li>
+      </ul>
+    </div>
+
+    <!-- Contacto -->
+    <div style="flex:1; min-width:200px;">
+      <h3 style="margin-bottom:10px; font-size:16px;">Contáctanos</h3>
+      <p style="font-size:14px; line-height:1.5;">
+        📍 Lima, Perú <br>
+        ✉️ <a href="mailto:agrokitInteligente@correo.com" style="color:#4CAF50;">agrokitInteligente@correo.com</a><br>
+        📞 +51 999 123 456
+      </p>
+    </div>
+  </div>
+
+  <!-- Línea inferior -->
+  <div style="border-top:1px solid #333; margin-top:30px; padding-top:15px; font-size:13px; color:#aaa;">
+    © 2025 Agro Kit — Todos los derechos reservados.
+  </div>
+</footer>
+</body>
+</html>

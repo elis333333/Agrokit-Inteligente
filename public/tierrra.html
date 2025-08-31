@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Información de la Tierra</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #113015; background: url("./img/Texto\ del\ párrafo.png") repeat; }
+    .section { padding: 40px 20px; margin-bottom: 50px; background: rgba(255,255,255,0.9); border-radius: 12px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+    h1 { font-size: 28px; border-left: 5px solid #00bf63; padding-left: 10px; margin: 20px auto 10px; max-width: 1000px; }
+    h2 { font-size: 20px; margin-bottom: 12px; color: #113015; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .chart-container { max-width: 700px; margin: 0 auto 18px; }
+    .data-box { background: #113015; border-radius: 12px; overflow: hidden; max-width: 700px; margin: 0 auto; }
+    table { width: 100%; border-collapse: collapse; color: #fff; }
+    th, td { padding: 12px; text-align: center; border-bottom: 1px solid #445b44; }
+    th { background: #00bf63; color: #fff; }
+    .legend { display:flex; gap:8px; align-items:center; font-size: 13px; }
+    .badge { padding:4px 8px; border-radius: 8px; background:#e7f7e7; color:#0b2b0b; }
+    .state { padding:4px 8px; border-radius: 8px; color:#113015; background:#dfe8df; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <!-- Título principal -->
+  <h1>Información de la tierra</h1>
+
+  <!-- Sección 1: Humedad de tierra -->
+  <div class="section">
+    <h2>
+      <span id="sen-hume-tierra">Sensor de humedad de tierra</span>
+      <span class="legend">
+        <span class="badge">Últimos 20</span>
+        <span id="estadoHumedad" class="state">—</span>
+      </span>
+    </h2>
+    <div class="chart-container">
+      <canvas id="chartHumedadTierra"></canvas>
+    </div>
+    <div class="data-box">
+      <table id="tablaHumedad">
+        <thead>
+          <tr><th>Día</th><th>Valor promedio (%)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sección 2: Temperatura de suelo -->
+  <div class="section">
+    <h2>
+      <span id="sen-temp-suelo">Sensor de temperatura de suelo</span>
+      <span class="legend">
+        <span class="badge">Últimos 20</span>
+        <span id="estadoTempSuelo" class="state">—</span>
+      </span>
+    </h2>
+    <div class="chart-container">
+      <canvas id="chartTempSuelo"></canvas>
+    </div>
+    <div class="data-box">
+      <table id="tablaTempSuelo">
+        <thead>
+          <tr><th>Día</th><th>Valor promedio (°C)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sección 3: Agua -->
+  <div class="section">
+    <h2>
+      <span id="sen-agua">Sensor de agua</span>
+      <span class="legend">
+        <span class="badge">Últimos 20</span>
+        <span id="estadoAgua" class="state">—</span>
+      </span>
+    </h2>
+    <div class="chart-container">
+      <canvas id="chartAgua"></canvas>
+    </div>
+    <div class="data-box">
+      <table id="tablaAgua">
+        <thead>
+          <tr><th>Día</th><th>Porcentaje de tiempo con agua (%)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ====== CONFIG ======
+    const API_BASE = ""; // mismo host
+    const ID_AGROKIT = (localStorage.getItem("current_agrokit") || "KIT123").trim();
+    const MAX_POINTS = 20;
+
+    // ====== UTL ======
+    const fmtDate = (ts) => {
+      if (!ts) return "";
+      const d = new Date(ts.replace(" ", "T"));
+      if (isNaN(d)) return ts;
+      return d.toLocaleString();
+    };
+    const dayKey = (ts) => {
+      const d = new Date(ts.replace(" ", "T"));
+      if (isNaN(d)) return ts.split(" ")[0] || ts;
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${dd}`;
+    };
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+    // Reglas coherentes para cultivo:
+    // humedad_tierra (%): <20 Bajo, 20–35 Óptimo, >35 Alto (exceso)
+    function estadoHumedadTierra(v){
+      if (v < 20) return "Bajo";
+      if (v > 35) return "Alto";
+      return "Óptimo";
+    }
+    // temp_suelo (°C): <15 Bajo, 15–35 Óptimo, >35 Alto
+    function estadoTempSuelo(v){
+      if (v < 15) return "Bajo";
+      if (v > 35) return "Alto";
+      return "Óptimo";
+    }
+    // agua: 0/1
+    function estadoAgua(v){
+      return v >= 1 ? "Hay agua" : "Sin agua";
+    }
+
+    // ====== CHARTS ======
+    const mkLine = (ctx, label) => new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label, data: [], borderColor: '#00bf63', tension: 0.25, fill:false }] },
+      options: { responsive: true, plugins: { legend: { display: true } }, scales: { x: { ticks: { maxRotation:0, autoSkip:true } } } }
+    });
+
+    const mkBinary = (ctx, label) => new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label, data: [], stepped: true, borderColor: '#00bf63', tension: 0, fill:false }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: {
+          y: { min: -0.1, max: 1.1, ticks: { callback: v => v===1 ? "Agua" : "No" } },
+          x: { ticks: { maxRotation:0, autoSkip:true } }
+        }
+      }
+    });
+
+    const chH = mkLine(document.getElementById('chartHumedadTierra').getContext('2d'), 'Humedad de tierra (%)');
+    const chT = mkLine(document.getElementById('chartTempSuelo').getContext('2d'), 'Temp. suelo (°C)');
+    const chA = mkBinary(document.getElementById('chartAgua').getContext('2d'), 'Agua (0/1)');
+
+    const estadoHumedadSpan = document.getElementById("estadoHumedad");
+    const estadoTempSpan = document.getElementById("estadoTempSuelo");
+    const estadoAguaSpan = document.getElementById("estadoAgua");
+
+    // ====== TABLAS ======
+    const tbH = document.querySelector("#tablaHumedad tbody");
+    const tbT = document.querySelector("#tablaTempSuelo tbody");
+    const tbA = document.querySelector("#tablaAgua tbody");
+
+    function llenarTablaPromedios(tbody, pares) {
+      tbody.innerHTML = "";
+      // pares: [{dia:'YYYY-MM-DD', valor: number}]
+      pares.slice(0, MAX_POINTS).forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${p.dia}</td><td>${Number.isFinite(p.valor) ? p.valor.toFixed(2) : "—"}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Para agua mostramos porcentaje (promedio*100)
+    function llenarTablaPorcentajes(tbody, pares) {
+      tbody.innerHTML = "";
+      pares.slice(0, MAX_POINTS).forEach(p => {
+        const pct = Number.isFinite(p.valor) ? (p.valor*100).toFixed(1) : "—";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${p.dia}</td><td>${pct}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Agrupa por día y saca promedio
+    function promediosPorDia(registros, selector) {
+      const map = new Map(); // dia -> array values
+      registros.forEach(r => {
+        const k = dayKey(r.timestamp);
+        const val = selector(r);
+        if (val === null || val === undefined) return;
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(Number(val));
+      });
+      const res = Array.from(map.entries()).map(([dia, arr]) => ({ dia, valor: avg(arr) }));
+      // más reciente primero
+      res.sort((a,b)=> b.dia.localeCompare(a.dia));
+      return res;
+    }
+
+    // ====== CARGA INICIAL ======
+    let buffer = []; // últimos N registros para este kit (orden del backend: DESC)
+    async function cargarInicial() {
+      const res = await fetch(`${API_BASE}/api/sensores/${encodeURIComponent(ID_AGROKIT)}`);
+      const arr = await res.json();
+      // arr viene DESC (más nuevo primero). Nosotros queremos mostrar ascendente en los charts.
+      buffer = arr.slice(0, MAX_POINTS).reverse();
+      pintar();
+    }
+
+    function pintar() {
+      const labels = buffer.map(r => fmtDate(r.timestamp));
+
+      chH.data.labels = labels;
+      chH.data.datasets[0].data = buffer.map(r => r.humedad_tierra);
+      chH.update();
+
+      chT.data.labels = labels;
+      chT.data.datasets[0].data = buffer.map(r => r.temp_suelo);
+      chT.update();
+
+      chA.data.labels = labels;
+      chA.data.datasets[0].data = buffer.map(r => (r.agua ? 1 : 0));
+      chA.update();
+
+      // Estados (según último)
+      const ultimo = buffer[buffer.length-1] || {};
+      if (ultimo && ultimo.humedad_tierra != null) estadoHumedadSpan.textContent = estadoHumedadTierra(Number(ultimo.humedad_tierra));
+      if (ultimo && ultimo.temp_suelo != null) estadoTempSpan.textContent = estadoTempSuelo(Number(ultimo.temp_suelo));
+      estadoAguaSpan.textContent = estadoAgua(ultimo && ultimo.agua ? 1 : 0);
+
+      // Tablas: promedios por día con lo disponible (hasta 20 registros)
+      const promH = promediosPorDia(buffer, r => r.humedad_tierra);
+      const promT = promediosPorDia(buffer, r => r.temp_suelo);
+      const promA = promediosPorDia(buffer, r => (r.agua ? 1 : 0));
+
+      llenarTablaPromedios(tbH, promH);
+      llenarTablaPromedios(tbT, promT);
+      llenarTablaPorcentajes(tbA, promA);
+    }
+
+    // ====== TIEMPO REAL ======
+    const socket = io();
+    socket.on("connect", () => {
+      // opcional: console.log("socket conectado");
+    });
+
+    socket.on("nuevo_registro", (r) => {
+      if (!r || r.id_agrokit !== ID_AGROKIT) return;
+      // Añadir al final (como más nuevo). Nuestro buffer está ASC -> debemos push y si excede, shift.
+      buffer.push(r);
+      if (buffer.length > MAX_POINTS) buffer.shift();
+      pintar();
+    });
+
+    // start
+    cargarInicial();
+  </script>
+</body>
+</html>

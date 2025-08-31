@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Agro Kit — Sobre nosotros</title>
+  <meta name="description" content="Agro Kit — Monitoreo de sensores e índices de vegetación" />
+  <style>
+    /* Reset simple */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;font-family:Arial,Helvetica,sans-serif;color:#113015;background:#fff; background-image: url("./img/Texto del párrafo.png");}
+
+    /* HERO con imagen de fondo (misma que tu ejemplo) */
+    .hero {
+      position:relative;
+      min-height:200px;
+      background: url("./img/Texto del párrafo (1).png") center center / cover no-repeat;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      padding:20px;
+      overflow:hidden;
+    }
+    /* degradado inferior para fundir con la sección blanca */
+    .hero::after{
+      content:"";
+      position:absolute;
+      left:0;right:0;bottom:0;
+      height:24%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, white 100%);
+    }
+
+    /* Header (logo + hamburguesa) */
+    .header {
+      width:100%;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      z-index:3;
+      position:relative;
+    }
+    .logo img{height:50px}
+    .menu-btn{
+      font-size:28px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#0a2e0a;
+      padding:8px 12px;
+      border-radius:8px;
+    }
+
+    /* Side menu (responsive) */
+    .side-menu{
+      position:fixed;
+      top:0;
+      right:-100%;
+      width:320px;
+      max-width:85%;
+      height:100%;
+      background:#2e4d2e;
+      color:#fff;
+      padding:26px 18px;
+      transition:right .28s ease;
+      z-index:600;
+      overflow:auto;
+      box-shadow:-8px 0 24px rgba(0,0,0,.35);
+    }
+    .side-menu.active{ right:0; }
+    .side-menu h3{ color:#bfffc9; margin:18px 0 8px; font-size:18px }
+    .side-menu a{ color:#fff; display:block; text-decoration:none; margin:8px 0; font-weight:600 }
+    .side-menu .close-btn{ background:none;border:none;color:#fff;font-size:20px;position:absolute;right:14px;top:8px;cursor:pointer }
+
+    /* CONTENT simple */
+    main{ background:#ffffffa4; padding:36px 18px; max-width:1100px; margin:-40px auto 60px; position:relative; z-index:2; border-radius:12px; box-shadow:0 8px 30px rgba(17,48,21,0.06) }
+    h1{ font-size:28px;color:#0b2a19; margin-bottom:12px }
+    .lead{ color:#2f4f35; margin-bottom:18px }
+    h2{ font-size:20px; color:#113015; margin:18px 0 8px; padding-left:10px; border-left:4px solid #00bf63 }
+    p{ color:#374b3b; line-height:1.6; margin-bottom:12px }
+
+    /* pequeña galería/imagen de fondo dentro de contenido (opcional) */
+    .hero-preview{
+      height:160px;
+      background: url("./img/OIP\ \(4\).webp") center center/cover no-repeat;
+      border-radius:10px;
+      margin-top:12px;
+      box-shadow:0 6px 18px rgba(0,0,0,.08);
+    }
+
+    /* Footer (idéntico al tuyo) */
+    footer{ background:#2e4d2e; color:#f0f0f0; padding: 40px 20px; text-align:center; margin-top:40px; }
+    .footer-inner{ max-width:1200px; margin:0 auto; display:flex; flex-wrap:wrap; justify-content:space-between; gap:20px; align-items:flex-start }
+    .footer-inner > div{ flex:1; min-width:200px; text-align:left }
+    .footer-inner h2{ color:#4CAF50; margin-bottom:10px; font-size:18px }
+    .footer-inner p, .footer-inner a{ color:#f0f0f0; text-decoration:none; font-size:14px; line-height:1.5 }
+    .footer-bottom{ border-top:1px solid #333; margin-top:30px; padding-top:15px; font-size:13px; color:#aaa }
+
+    /* Responsive */
+    @media (max-width:900px){
+      .hero{align-items:flex-start;padding:14px}
+      main{margin: -30px 12px 40px}
+      .footer-inner{ flex-direction:column; align-items:flex-start }
+    }
+  .btn{
+    display:inline-block;
+    background:#00bf63;
+    color:#042214;
+    padding:10px 14px;
+    border-radius:8px;
+    text-decoration:none;
+    font-weight:700;
+  }
+
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <header class="hero" role="banner">
+    <div class="header" style="width:100%;max-width:1200px;margin:0 auto;">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="logo">
+          <!-- mantén tu imagen con la ruta original -->
+          <img src="./img/Texto del párrafo (4) (1).png" alt="Agro Kit logo">
+        </div>
+        <div style="font-weight:800;color:#052214">Agro Kit</div>
+      </div>
+
+      <button class="menu-btn" id="openMenu" aria-label="Abrir menú">☰</button>
+    </div>
+  </header>
+
+  <!-- SIDE MENU HAMBURGUESA -->
+  <nav class="side-menu" id="sideMenu" aria-hidden="true">
+    <button class="close-btn" id="closeMenu" aria-label="Cerrar menú">✖</button>
+    <h3>AgroKit</h3>
+    <ul style="list-style:none;padding:0;margin:0;font-size:14px;line-height:2">
+          <li><a href="./index.html#inicio">Inicio</a></li>
+          <li><a href="./index.html#sensores">Sensores</a></li>
+          <li><a href="./index.html#indices">Índices</a></li>
+          <li><a href="./index.html#contacto">Contacto</a></li>
+    </ul>
+    <hr style="border:none;height:1px;background:rgba(255,255,255,.06);margin:12px 0">
+    <a href="#sobre">Sobre Nosotros</a>
+    <a href="#que">Qué hacemos</a>
+    <a href="#impacto">Impacto</a>
+    <hr style="border:none;height:1px;background:rgba(255,255,255,.06);margin:12px 0">
+    <h3>Sensores</h3>
+    <a href="#sensores">Humedad de suelo</a>
+    <a href="#sensores">Temperatura</a>
+    <a href="#sensores">Luz</a>
+    <hr style="border:none;height:1px;background:rgba(255,255,255,.06);margin:12px 0">
+    <h3>Contacto</h3>
+    <a href="#contacto">Escríbenos</a>
+  </nav>
+
+  <!-- MAIN (contenido sencillo con subtítulos y párrafos) -->
+  <main role="main" aria-labelledby="titulo-principal">
+    <h1 id="titulo-principal">Sobre Agro Kit</h1>
+    <p class="lead">Agro Kit Inteligente es un sistema tecnológico diseñado para el monitoreo ambiental en cultivos y plantas. Su objetivo principal es ofrecer a los agricultores, estudiantes e investigadores una herramienta accesible y práctica que les permita conocer en tiempo real las condiciones de humedad del suelo, temperatura, luminosidad y agua. Este dispositivo se presenta como una alternativa innovadora y de bajo costo que combina sensores, alertas sonoras y visuales, así como la posibilidad de conectarse mediante Bluetooth a una aplicación móvil.</p>
+
+    <h2 id="sobre">Nuestra misión</h2>
+    <p>Nuestra misión es democratizar el acceso a la tecnología en el ámbito agrícola, fomentando el uso de soluciones inteligentes que ayuden a optimizar recursos naturales como el agua, mejorar el cuidado de las plantas y aumentar la productividad de los cultivos. Queremos acercar la ciencia y la tecnología al campo, contribuyendo al desarrollo sostenible y apoyando especialmente a pequeños agricultores que suelen tener menos acceso a sistemas modernos de monitoreo.</p>
+
+    <h2 id="que">Qué hacemos</h2>
+    <p>En Agro Kit diseñamos, desarrollamos y probamos dispositivos de monitoreo ambiental basados en microcontroladores como Arduino. Implementamos sensores que registran variables críticas (humedad, temperatura, luz y agua) y ofrecemos un sistema que alerta de manera inmediata mediante sonidos, luces y conexión Bluetooth. También trabajamos en la recopilación de datos para su análisis, con el fin de ayudar a los usuarios a tomar decisiones más informadas sobre el cuidado de sus cultivos.</p>
+
+    <h2 id="impacto">Impacto y validación</h2>
+    <p>El Agro Kit Inteligente tiene un impacto directo en la optimización de recursos agrícolas, ya que permite reducir el desperdicio de agua, prevenir el deterioro de los cultivos y mejorar el rendimiento de las cosechas. Su validación se basa en pruebas experimentales realizadas en ambientes controlados, donde se ha demostrado la precisión de los sensores y la funcionalidad de las alertas. Además, su enfoque accesible lo convierte en una herramienta educativa y práctica para escuelas, ferias científicas y agricultores que buscan soluciones tecnológicas económicas y fáciles de implementar.</p>
+
+    <div class="hero-preview" aria-hidden="true"></div>
+
+    <h2 id="contacto">Contacto</h2>
+    <p>¿Quieres replicar Agro Kit en tu centro educativo o huerto? Escríbenos a <a href="mailto:agrokit@correo.com">agrokitInteligente@correo.com</a></p>
+    
+    <h2> Descargar Informe</h2>
+    <a href="./doc/Proyecto Informe Agrokit (versión 5.3.1).docx" download="Informe-AgroKit.docx" class="btn">📥 Descargar Informe (.docx)</a>
+  </main>
+
+  <!-- FOOTER (idéntico al tuyo) -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <h2>🌱 Agro Kit</h2>
+        <p>Plataforma de monitoreo agrícola con sensores IoT e índices de vegetación.<br>Optimiza tus cultivos con tecnología inteligente.</p>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:10px;font-size:16px;color:#fff">Enlaces</h3>
+        <ul style="list-style:none;padding:0;margin:0;font-size:14px;line-height:2">
+          <li><a href="./index.html#inicio">Inicio</a></li>
+          <li><a href="./index.html#sensores">Sensores</a></li>
+          <li><a href="./index.html#indices">Índices</a></li>
+          <li><a href="./index.html#contacto">Contacto</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:10px;font-size:16px;color:#fff">Contáctanos</h3>
+        <p>📍 Lima, Perú <br>✉️ <a href="mailto:agrokitInteligente@correo.com">agrokitInteligente@correo.com</a><br>📞 +51 999 123 456</p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">© 2025 Agro Kit — Todos los derechos reservados.</div>
+  </footer>
+
+  <!-- JS mínimo: menú + accesibilidad -->
+  <script>
+    const openBtn = document.getElementById('openMenu');
+    const closeBtn = document.getElementById('closeMenu');
+    const sideMenu = document.getElementById('sideMenu');
+
+    openBtn.addEventListener('click', () => {
+      sideMenu.classList.add('active');
+      sideMenu.setAttribute('aria-hidden','false');
+      // foco accesible
+      sideMenu.querySelector('a')?.focus();
+    });
+
+    closeBtn.addEventListener('click', () => {
+      sideMenu.classList.remove('active');
+      sideMenu.setAttribute('aria-hidden','true');
+      openBtn.focus();
+    });
+
+    // Cerrar menú con ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sideMenu.classList.contains('active')) {
+        sideMenu.classList.remove('active');
+        sideMenu.setAttribute('aria-hidden','true');
+        openBtn.focus();
+      }
+    });
+
+    // Cerrar menú al hacer click fuera (en pantallas pequeñas)
+    document.addEventListener('click', (e) => {
+      if (!sideMenu.contains(e.target) && !openBtn.contains(e.target) && sideMenu.classList.contains('active')) {
+        sideMenu.classList.remove('active');
+        sideMenu.setAttribute('aria-hidden','true');
+      }
+    });
+  </script>
+</body>
+</html>

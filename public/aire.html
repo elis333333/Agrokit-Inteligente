@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Información del Ambiente</title>
+
+  <style>
+    body { margin:0; font-family:Arial, sans-serif; color:#113015; background: url("./img/Texto\ del\ párrafo.png") repeat; }
+    .container { max-width:1100px; margin:24px auto; padding:16px; }
+    h1 { font-size:28px; border-left:5px solid #00bf63; padding-left:10px; margin-bottom:18px; }
+    .section { padding:24px; margin-bottom:28px; background: rgba(255,255,255,0.95); border-radius:12px; }
+    h2 { font-size:20px; margin-bottom:14px; color:#113015; }
+    .chart-container { max-width:900px; margin:0 auto 16px; }
+    .data-box { background:#113015; border-radius:8px; overflow:hidden; max-width:700px; margin:0 auto; }
+    table { width:100%; border-collapse:collapse; color:#fff; }
+    th, td { padding:10px; text-align:center; border-bottom:1px solid #445b44; }
+    th { background:#00bf63; color:#fff; }
+    .controls { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+    input, select, button { padding:8px; border-radius:6px; border:1px solid #ccc; }
+    button.primary { background:#00bf63; color:white; border:none; cursor:pointer; padding:8px 12px; }
+    .small { font-size:13px; color:#666; }
+  </style>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- socket.io client (served by server) -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Información del ambiente</h1>
+
+    <div class="controls">
+      <label class="small">Kit:</label>
+      <input id="kitInput" value="KIT123" />
+      <button id="btnLoad" class="primary">Cargar</button>
+      <span class="small">Últimos 20 registros — actualización en tiempo real</span>
+    </div>
+
+    <!-- Humedad de aire -->
+    <div class="section" >
+      <h2 id="sen-humedad-aire">Sensor de humedad de aire</h2>
+      <div class="chart-container"><canvas id="chartHumedadAire"></canvas></div>
+      <div class="data-box">
+        <table id="tableHumedadAire">
+          <thead><tr><th>Día</th><th>Valor Promedio (%)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Temperatura ambiente -->
+    <div class="section" id="sec-temp-amb">
+      <h2>Sensor de temperatura</h2>
+      <div class="chart-container"><canvas id="chartTempAmbiente"></canvas></div>
+      <div class="data-box">
+        <table id="tableTempAmbiente">
+          <thead><tr><th>Día</th><th>Valor Promedio (°C)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Luz -->
+    <div class="section" id="sec-luz">
+      <h2>Sensor de luz</h2>
+      <div class="chart-container"><canvas id="chartLuz"></canvas></div>
+      <div class="data-box">
+        <table id="tableLuz">
+          <thead><tr><th>Día</th><th>Valor Promedio</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Presión -->
+    <div class="section" id="sec-presion">
+      <h2>Sensor de presión atmosférica</h2>
+      <div class="chart-container"><canvas id="chartPresion"></canvas></div>
+      <div class="data-box">
+        <table id="tablePresion">
+          <thead><tr><th>Día</th><th>Valor Promedio (hPa)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+const API_BASE = ""; // mismo host
+const socket = io(); // conecta a /socket.io por defecto
+
+// Chart instances
+let chartHumedad, chartTemp, chartLuz, chartPresion;
+
+// crear chart básico y devolver instancia
+function createLineChart(canvasId, label, unit, yOptions = {}) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderColor: '#00bf63',
+        backgroundColor: 'rgba(0,191,99,0.06)',
+        pointRadius: 3,
+        tension: 0.2,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { ticks: { color: '#113015' } },
+        y: Object.assign({
+          beginAtZero: false,
+          ticks: { color: '#113015' }
+        }, yOptions)
+      }
+    }
+  });
+}
+
+// inicializar charts con escalas sugeridas
+function initCharts(){
+  chartHumedad = createLineChart('chartHumedadAire', 'Humedad aire (%)', '%', { suggestedMin: 0, suggestedMax: 100 });
+  chartTemp = createLineChart('chartTempAmbiente', 'Temperatura (°C)', '°C', { suggestedMin: -10, suggestedMax: 50 });
+  chartLuz = createLineChart('chartLuz', 'Luz (0-100)', '', { suggestedMin: 0, suggestedMax: 100 });
+  chartPresion = createLineChart('chartPresion', 'Presión (hPa)', 'hPa', { suggestedMin: 900, suggestedMax: 1100 });
+}
+
+// formatea timestamp "YYYY-MM-DD HH:MM:SS" a 'HH:MM:SS' o local
+function fmtTs(ts){
+  if(!ts) return '';
+  const iso = ts.replace(' ', 'T');
+  const d = new Date(iso);
+  if (isNaN(d)) return ts;
+  return d.toLocaleString();
+}
+
+// agrupa por fecha (YYYY-MM-DD) y calcula promedio de array de números (ignora null/NaN)
+function dailyAverages(records, field){
+  const map = {};
+  records.forEach(r => {
+    const ts = r.timestamp || r.fecha || r.fechaHora || null;
+    if(!ts) return;
+    const day = ts.split(' ')[0]; // YYYY-MM-DD
+    const val = r[field];
+    if (val === undefined || val === null || isNaN(Number(val))) return;
+    if(!map[day]) map[day]={sum:0, cnt:0};
+    map[day].sum += Number(val);
+    map[day].cnt += 1;
+  });
+  // convert to array sorted descending (newest first)
+  const arr = Object.keys(map).map(day => ({ day, avg: map[day].sum / map[day].cnt }));
+  arr.sort((a,b) => b.day.localeCompare(a.day));
+  return arr;
+}
+
+// load data from API and update UI
+async function loadAndRender(kitId){
+  if(!kitId) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/sensores/${encodeURIComponent(kitId)}`);
+    if(!res.ok) throw new Error('Error al obtener datos');
+    const data = await res.json(); // array ordenada por fecha DESC (según backend)
+
+    // usamos últimos 20 registros
+    const last20 = data.slice(0,20);
+
+    // actualizar charts (labels = timestamps reversed -> oldest->newest)
+    const ordenado = last20.slice().reverse();
+    const labels = ordenado.map(r => fmtTs(r.timestamp));
+
+    // datasets (coalesce value to null if missing)
+    const humAireData = ordenado.map(r => r.humedad_aire == null ? null : Number(r.humedad_aire));
+    const tempData   = ordenado.map(r => r.temp_aire == null ? null : Number(r.temp_aire));
+    const luzData    = ordenado.map(r => r.luz == null ? null : Number(r.luz));
+    const presData   = ordenado.map(r => r.presion == null ? null : Number(r.presion));
+
+    // set chart data helper
+    function setChart(chart, labels, data){
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }
+
+    setChart(chartHumedad, labels, humAireData);
+    setChart(chartTemp, labels, tempData);
+    setChart(chartLuz, labels, luzData);
+    setChart(chartPresion, labels, presData);
+
+    // calcular promedios diarios (puedes limitar a 7 filas)
+    const daysHum = dailyAverages(data, 'humedad_aire').slice(0,7);
+    const daysTemp = dailyAverages(data, 'temp_aire').slice(0,7);
+    const daysLuz = dailyAverages(data, 'luz').slice(0,7);
+    const daysPres = dailyAverages(data, 'presion').slice(0,7);
+
+    // render tables
+    function renderTable(tblId, daysArr, fmtFn) {
+      const tbody = document.querySelector(`#${tblId} tbody`);
+      tbody.innerHTML = '';
+      if (!daysArr || daysArr.length===0){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="2">No hay datos</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+      daysArr.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.day}</td><td>${isFinite(d.avg) ? (fmtFn ? fmtFn(d.avg) : d.avg.toFixed(2)) : '—'}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    renderTable('tableHumedadAire', daysHum, v => v.toFixed(1));
+    renderTable('tableTempAmbiente', daysTemp, v => v.toFixed(1));
+    renderTable('tableLuz', daysLuz, v => v.toFixed(0));
+    renderTable('tablePresion', daysPres, v => v.toFixed(1));
+
+  } catch (err) {
+    console.error("Error cargar datos:", err);
+  }
+}
+
+// inicial
+initCharts();
+let currentKit = document.getElementById('kitInput').value || 'KIT123';
+loadAndRender(currentKit);
+
+// load button
+document.getElementById('btnLoad').addEventListener('click', () => {
+  currentKit = document.getElementById('kitInput').value.trim();
+  loadAndRender(currentKit);
+});
+
+// actualizar en tiempo real: cuando llega nuevo_registro, si coincide id_agrokit recargamos (podríamos también solo push al chart)
+socket.on('nuevo_registro', (row) => {
+  try {
+    if (!row || !row.id_agrokit) return;
+    if (row.id_agrokit !== currentKit) return; // ignorar si no es el kit seleccionado
+    // recargar los últimos datos (simple y seguro)
+    loadAndRender(currentKit);
+  } catch (e) { console.error(e); }
+});
+</script>
+</body>
+</html>
