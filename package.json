@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
   "start": "node server.js",
-  "postinstall": "npm rebuild sqlite3 --build-from-source && npm rebuild bcrypt --build-from-source"
+    "postinstall": "npm rebuild bcrypt --build-from-source=false || true"
 },
   "dependencies": {
     "bcrypt": "^5.1.1",
