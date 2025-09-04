@@ -37,7 +37,7 @@ async function initDB() {
   const filebuffer = fs.existsSync(dbFile) ? fs.readFileSync(dbFile) : null;
   db = filebuffer ? new SQL.Database(filebuffer) : new SQL.Database();
 
-  // crear tablas
+  // crear tablas (si no existen)
   db.run(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,10 +73,27 @@ async function initDB() {
 
 // helper: persistir db en disco
 function saveDB() {
-  const dbFile = path.join(__dirname, "agrokit.db");
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(dbFile, buffer);
+  try {
+    const dbFile = path.join(__dirname, "agrokit.db");
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(dbFile, buffer);
+    console.log("DB guardada en disco ->", dbFile);
+  } catch (e) {
+    console.error("Error guardando DB:", e);
+  }
+}
+
+// save on exit signals
+function setupGracefulShutdown() {
+  const handler = () => {
+    console.log("Recibiendo señal de terminación, guardando DB...");
+    if (db) saveDB();
+    process.exit(0);
+  };
+  process.on("SIGINT", handler);
+  process.on("SIGTERM", handler);
+  process.on("exit", () => { if (db) saveDB(); });
 }
 
 // helper: auth middleware
@@ -92,6 +109,11 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// ---------- Health / Ping ----------
+app.get("/ping", (req, res) => {
+  res.json({ ok: true, serverTime: new Date().toISOString(), dbInitialized: !!db });
+});
+
 // ---------- AUTH ----------
 app.post("/api/auth/register", async (req, res) => {
   const { username, password } = req.body;
@@ -102,14 +124,14 @@ app.post("/api/auth/register", async (req, res) => {
     const stmt = db.prepare(
       "SELECT id FROM usuarios WHERE username = :username"
     );
-    const result = stmt.getAsObject({ ":username": username });
-    if (result.id) return res.status(400).json({ error: "Usuario ya existe" });
+    stmt.bind({ ":username": username });
+    if (stmt.step()) {
+      const existing = stmt.getAsObject();
+      if (existing.id) return res.status(400).json({ error: "Usuario ya existe" });
+    }
 
     const hash = await bcrypt.hash(password, 10);
-    db.run(
-      "INSERT INTO usuarios (username, password_hash) VALUES (?, ?)",
-      [username, hash]
-    );
+    db.run("INSERT INTO usuarios (username, password_hash) VALUES (?, ?)", [username, hash]);
     saveDB();
 
     res.json({ msg: "Usuario registrado" });
@@ -128,8 +150,9 @@ app.post("/api/auth/login", (req, res) => {
     const stmt = db.prepare(
       "SELECT id, username, password_hash FROM usuarios WHERE username = :username"
     );
-    const row = stmt.getAsObject({ ":username": username });
-    if (!row.id) return res.status(401).json({ error: "Credenciales inválidas" });
+    stmt.bind({ ":username": username });
+    if (!stmt.step()) return res.status(401).json({ error: "Credenciales inválidas" });
+    const row = stmt.getAsObject();
 
     bcrypt.compare(password, row.password_hash).then((ok) => {
       if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
@@ -139,6 +162,9 @@ app.post("/api/auth/login", (req, res) => {
         { expiresIn: "12h" }
       );
       res.json({ token });
+    }).catch(err => {
+      console.error("bcrypt error:", err);
+      res.status(500).json({ error: "Error servidor" });
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -201,17 +227,22 @@ app.post("/api/sensores", (req, res) => {
         bateria ?? null,
       ];
 
-  db.run(insertSQL, params);
+  try {
+    db.run(insertSQL, params);
+    db.run("INSERT OR IGNORE INTO agrokits (id_agrokit, name) VALUES (?, ?)", [id_agrokit, id_agrokit]);
+    saveDB();
 
-  db.run("INSERT OR IGNORE INTO agrokits (id_agrokit, name) VALUES (?, ?)", [
-    id_agrokit,
-    id_agrokit,
-  ]);
+    // recuperar último registro para debug/respuesta
+    const stmt = db.prepare(`SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, gps, bateria, fecha as timestamp FROM sensores WHERE id = (SELECT max(id) FROM sensores)`);
+    let row = null;
+    if (stmt.step()) row = stmt.getAsObject();
 
-  saveDB();
-  io.emit("nuevo_registro", req.body);
-
-  res.json({ success: true });
+    io.emit("nuevo_registro", req.body);
+    return res.json({ success: true, registro: row });
+  } catch (err) {
+    console.error("Insert error:", err);
+    return res.status(500).json({ error: "Error al insertar" });
+  }
 });
 
 // ---------- Get sensores ----------
@@ -222,8 +253,8 @@ app.get("/api/sensores/:id_agrokit", (req, res) => {
       `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, fecha as timestamp
        FROM sensores WHERE id_agrokit = :id ORDER BY fecha DESC LIMIT 100`
     );
-    const rows = [];
     stmt.bind({ ":id": id });
+    const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
     res.json(rows);
   } catch (err) {
@@ -240,8 +271,8 @@ app.get("/api/download/:id_agrokit", authenticateToken, async (req, res) => {
       `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, fecha as timestamp
        FROM sensores WHERE id_agrokit = :id ORDER BY fecha DESC`
     );
-    const rows = [];
     stmt.bind({ ":id": id_agrokit });
+    const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
 
     const workbook = new ExcelJS.Workbook();
@@ -260,17 +291,9 @@ app.get("/api/download/:id_agrokit", authenticateToken, async (req, res) => {
     ];
     rows.forEach((r) => sheet.addRow(r));
 
-    const fileName = `agrokit_${id_agrokit}_${new Date()
-      .toISOString()
-      .slice(0, 10)}.xlsx`;
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${fileName}`
-    );
+    const fileName = `agrokit_${id_agrokit}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -300,11 +323,14 @@ io.on("connection", (socket) => {
 
 // start
 initDB().then(() => {
+  setupGracefulShutdown();
   server.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
   });
+}).catch(err => {
+  console.error("Fallo inicializando DB:", err);
+  process.exit(1);
 });
-
 
 
 

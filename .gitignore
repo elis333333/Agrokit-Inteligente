@@ -1,6 +1,2 @@
 node_modules/
-.env
 agrokit.db
-.DS_Store
-npm-debug.log
-yarn-error.log
