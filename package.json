@@ -1,24 +1,28 @@
+
 {
   "name": "agrokit-server",
   "version": "1.0.0",
+  "description": "Backend Agrokit - sensores + gps + socket.io",
   "main": "server.js",
   "scripts": {
-  "start": "node server.js",
-    "postinstall": "npm rebuild bcrypt --build-from-source=false || true"
-},
-  "dependencies": {
-    "bcrypt": "^5.1.1",
-    "body-parser": "^2.2.0",
-    "cors": "^2.8.5",
-    "exceljs": "^4.4.0",
-    "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2",
-    "socket.io": "^4.8.1",
-    "sqlite3": "^5.1.7"
+    "start": "node server.js",
+    "dev": "NODE_ENV=development nodemon server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "better-sqlite3": "^8.2.0",
+    "bcryptjs": "^2.4.3",
+    "chart.js": "^4.4.0",
+    "cors": "^2.8.5",
+    "exceljs": "^4.3.0",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "socket.io": "^4.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
 }
- 
+

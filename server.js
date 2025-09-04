@@ -1,10 +1,9 @@
-
 // server.js
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3"); // <- reemplaza sqlite3
 const path = require("path");
 const cors = require("cors");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const ExcelJS = require("exceljs");
 const http = require("http");
@@ -24,47 +23,52 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// DB setup
+// DB setup (better-sqlite3)
 const DB_FILE = path.join(__dirname, "agrokit.db");
-const db = new sqlite3.Database(DB_FILE, (err) => {
-  if (err) return console.error("DB open error:", err);
-  console.log("SQLite DB:", DB_FILE);
-});
+let db;
+try {
+  db = new Database(DB_FILE);
+  console.log("SQLite (better-sqlite3) DB:", DB_FILE);
+} catch (err) {
+  console.error("Error abriendo DB:", err);
+  process.exit(1);
+}
 
-db.serialize(() => {
-  // Nota: ya incluimos gps (TEXT) y bateria (REAL) en la definición.
-  db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password_hash TEXT
-  )`);
+// Crear tablas (sincrónico)
+db.exec(`
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE,
+  password_hash TEXT
+);
 
-  db.run(`CREATE TABLE IF NOT EXISTS agrokits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_agrokit TEXT UNIQUE,
-    name TEXT,
-    api_key TEXT
-  )`);
+CREATE TABLE IF NOT EXISTS agrokits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_agrokit TEXT UNIQUE,
+  name TEXT,
+  api_key TEXT
+);
 
-  db.run(`CREATE TABLE IF NOT EXISTS sensores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_agrokit TEXT,
-    humedad_tierra REAL,
-    temp_aire REAL,
-    humedad_aire REAL,
-    temp_suelo REAL,
-    luz REAL,
-    presion REAL,
-    agua INTEGER,
-    gps TEXT,
-    bateria REAL,
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`);
+CREATE TABLE IF NOT EXISTS sensores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_agrokit TEXT,
+  humedad_tierra REAL,
+  temp_aire REAL,
+  humedad_aire REAL,
+  temp_suelo REAL,
+  luz REAL,
+  presion REAL,
+  agua INTEGER,
+  gps TEXT,
+  bateria REAL,
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`);
 
-  // Si migras desde una DB antigua sin las columnas, intenta añadirlas (ignorar error si ya existen).
-  db.run(`ALTER TABLE sensores ADD COLUMN gps TEXT`, (e) => { /* ignorar errores */ });
-  db.run(`ALTER TABLE sensores ADD COLUMN bateria REAL`, (e) => { /* ignorar errores */ });
-});
+// Intentar añadir columnas (si migras desde DB antigua)
+// Mejor envolver en try/catch para ignorar error si ya existen
+try { db.prepare(`ALTER TABLE sensores ADD COLUMN gps TEXT`).run(); } catch(e) { /* ignore */ }
+try { db.prepare(`ALTER TABLE sensores ADD COLUMN bateria REAL`).run(); } catch(e) { /* ignore */ }
 
 // Helper: auth middleware
 function authenticateToken(req, res, next) {
@@ -85,10 +89,13 @@ app.post("/api/auth/register", async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: "Faltan datos" });
   try {
     const hash = await bcrypt.hash(password, 10);
-    db.run("INSERT INTO usuarios (username, password_hash) VALUES (?, ?)", [username, hash], function (err) {
-      if (err) return res.status(400).json({ error: "Usuario ya existe" });
-      res.json({ msg: "Usuario registrado" });
-    });
+    try {
+      const stmt = db.prepare("INSERT INTO usuarios (username, password_hash) VALUES (?, ?)");
+      const info = stmt.run(username, hash);
+      return res.json({ msg: "Usuario registrado", id: info.lastInsertRowid });
+    } catch (err) {
+      return res.status(400).json({ error: "Usuario ya existe" });
+    }
   } catch (e) {
     res.status(500).json({ error: "Error servidor" });
   }
@@ -98,14 +105,21 @@ app.post("/api/auth/login", (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Faltan datos" });
 
-  db.get("SELECT * FROM usuarios WHERE username = ?", [username], async (err, row) => {
-    if (err) return res.status(500).json({ error: "DB error" });
+  try {
+    const row = db.prepare("SELECT * FROM usuarios WHERE username = ?").get(username);
     if (!row) return res.status(401).json({ error: "Credenciales inválidas" });
-    const ok = await bcrypt.compare(password, row.password_hash);
-    if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
-    const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: "12h" });
-    res.json({ token });
-  });
+    bcrypt.compare(password, row.password_hash).then(ok => {
+      if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
+      const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: "12h" });
+      res.json({ token });
+    }).catch(err => {
+      console.error("bcrypt error:", err);
+      res.status(500).json({ error: "Error servidor" });
+    });
+  } catch (err) {
+    console.error("DB error login:", err);
+    res.status(500).json({ error: "DB error" });
+  }
 });
 
 // ---------- Upload desde ESP32 (público) ----------
@@ -150,113 +164,110 @@ app.post("/api/sensores", (req, res) => {
   const bateriaVal = (typeof bateria === "number") ? bateria : null;
 
   const insertWithDate = !!fechaHora;
-  const params = insertWithDate
-    ? [id_agrokit, humedad_tierra ?? null, temp_aire ?? null, humedad_aire ?? null, temp_suelo ?? null, luz ?? null, presion ?? null, agua ?? null, gpsText, bateriaVal, fechaHora]
-    : [id_agrokit, humedad_tierra ?? null, temp_aire ?? null, humedad_aire ?? null, temp_suelo ?? null, luz ?? null, presion ?? null, agua ?? null, gpsText, bateriaVal];
+  let sql, params;
+  if (insertWithDate) {
+    sql = `INSERT INTO sensores (id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, gps, bateria, fecha)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    params = [id_agrokit, humedad_tierra ?? null, temp_aire ?? null, humedad_aire ?? null, temp_suelo ?? null, luz ?? null, presion ?? null, agua ?? null, gpsText, bateriaVal, fechaHora];
+  } else {
+    sql = `INSERT INTO sensores (id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, gps, bateria)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    params = [id_agrokit, humedad_tierra ?? null, temp_aire ?? null, humedad_aire ?? null, temp_suelo ?? null, luz ?? null, presion ?? null, agua ?? null, gpsText, bateriaVal];
+  }
 
-  const sql = insertWithDate
-    ? `INSERT INTO sensores (id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, gps, bateria, fecha)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    : `INSERT INTO sensores (id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, gps, bateria)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  try {
+    const info = db.prepare(sql).run(...params);
+    // registrar agrokit si no existe (sincrónico)
+    try {
+      db.prepare("INSERT OR IGNORE INTO agrokits (id_agrokit, name) VALUES (?, ?)").run(id_agrokit, id_agrokit);
+    } catch (e) { /* ignore minor errors */ }
 
-  db.run(sql, params, function (err) {
-    if (err) {
-      console.error("Insert error:", err);
-      return res.status(500).json({ error: "Error al insertar" });
-    }
-
-    // registrar agrokit si no existe
-    db.run("INSERT OR IGNORE INTO agrokits (id_agrokit, name) VALUES (?, ?)", [id_agrokit, id_agrokit]);
-
-    // obtener el registro insertado y emitirlo por socket.io para tiempo real
-    const lastId = this.lastID;
-    db.get(
+    const lastId = info.lastInsertRowid;
+    const row = db.prepare(
       `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, gps, bateria, fecha as timestamp
-       FROM sensores WHERE id = ?`, [lastId], (e, row) => {
-      if (!e && row) {
-        // log para debug
-        console.log("Registro insertado:", row);
-        // emitimos evento global; los clientes filtrarán por id_agrokit si quieren
-        io.emit("nuevo_registro", row);
-        // respondemos con el registro insertado para debug en el ESP32
-        return res.json({ success: true, id: lastId, registro: row });
-      } else {
-        // en caso de no poder recuperar fila, devolvemos al menos success
-        return res.json({ success: true, id: lastId });
-      }
-    });
-  });
+       FROM sensores WHERE id = ?`
+    ).get(lastId);
+
+    if (row) {
+      console.log("Registro insertado:", row);
+      io.emit("nuevo_registro", row);
+      return res.json({ success: true, id: lastId, registro: row });
+    } else {
+      return res.json({ success: true, id: lastId });
+    }
+  } catch (err) {
+    console.error("Insert error:", err);
+    return res.status(500).json({ error: "Error al insertar" });
+  }
 });
 
 // ---------- Get datos por id_agrokit ----------
 // Nota: aquí dejamos la salida "básica" (igual que antes). No incluimos gps/bateria en esta ruta pública.
 app.get("/api/sensores/:id_agrokit", (req, res) => {
   const id = req.params.id_agrokit;
-  db.all(
-    `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, fecha as timestamp
-     FROM sensores
-     WHERE id_agrokit = ?
-     ORDER BY fecha DESC
-     LIMIT 100`,
-    [id],
-    (err, rows) => {
-      if (err) {
-        console.error("DB select error:", err);
-        return res.status(500).json({ error: "Error DB" });
-      }
-      res.json(rows);
-    }
-  );
+  try {
+    const rows = db.prepare(
+      `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, fecha as timestamp
+       FROM sensores
+       WHERE id_agrokit = ?
+       ORDER BY fecha DESC
+       LIMIT 100`
+    ).all(id);
+    res.json(rows);
+  } catch (err) {
+    console.error("DB select error:", err);
+    res.status(500).json({ error: "Error DB" });
+  }
 });
 
 // ---------- Descargar Excel (PROTEGIDO) ----------
 // Mantengo la exportación tal como la tenías (no añadí lat/lon ni bateria a las columnas, como pediste).
-app.get("/api/download/:id_agrokit", authenticateToken, (req, res) => {
+app.get("/api/download/:id_agrokit", authenticateToken, async (req, res) => {
   const id_agrokit = req.params.id_agrokit;
-  db.all(
-    `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, fecha as timestamp
-     FROM sensores
-     WHERE id_agrokit = ?
-     ORDER BY fecha DESC`,
-    [id_agrokit],
-    async (err, rows) => {
-      if (err) {
-        console.error("DB select error:", err);
-        return res.status(500).json({ error: "Error DB" });
-      }
+  try {
+    const rows = db.prepare(
+      `SELECT id, id_agrokit, humedad_tierra, temp_aire, humedad_aire, temp_suelo, luz, presion, agua, fecha as timestamp
+       FROM sensores
+       WHERE id_agrokit = ?
+       ORDER BY fecha DESC`
+    ).all(id_agrokit);
 
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("Datos");
-      sheet.columns = [
-        { header: "id", key: "id", width: 8 },
-        { header: "id_agrokit", key: "id_agrokit", width: 14 },
-        { header: "humedad_tierra", key: "humedad_tierra", width: 16 },
-        { header: "temp_aire", key: "temp_aire", width: 12 },
-        { header: "humedad_aire", key: "humedad_aire", width: 14 },
-        { header: "temp_suelo", key: "temp_suelo", width: 12 },
-        { header: "luz", key: "luz", width: 12 },
-        { header: "presion", key: "presion", width: 12 },
-        { header: "agua", key: "agua", width: 10 },
-        { header: "timestamp", key: "timestamp", width: 22 }
-      ];
-      rows.forEach(r => sheet.addRow(r));
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Datos");
+    sheet.columns = [
+      { header: "id", key: "id", width: 8 },
+      { header: "id_agrokit", key: "id_agrokit", width: 14 },
+      { header: "humedad_tierra", key: "humedad_tierra", width: 16 },
+      { header: "temp_aire", key: "temp_aire", width: 12 },
+      { header: "humedad_aire", key: "humedad_aire", width: 14 },
+      { header: "temp_suelo", key: "temp_suelo", width: 12 },
+      { header: "luz", key: "luz", width: 12 },
+      { header: "presion", key: "presion", width: 12 },
+      { header: "agua", key: "agua", width: 10 },
+      { header: "timestamp", key: "timestamp", width: 22 }
+    ];
+    rows.forEach(r => sheet.addRow(r));
 
-      const fileName = `agrokit_${id_agrokit}_${new Date().toISOString().slice(0,10)}.xlsx`;
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
-      await workbook.xlsx.write(res);
-      res.end();
-    }
-  );
+    const fileName = `agrokit_${id_agrokit}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("DB select error:", err);
+    res.status(500).json({ error: "Error DB" });
+  }
 });
 
 // ---------- Listar agrokits (PROTEGIDO) ----------
 app.get("/api/agrokits", authenticateToken, (req, res) => {
-  db.all("SELECT id_agrokit, name FROM agrokits", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: "DB error" });
+  try {
+    const rows = db.prepare("SELECT id_agrokit, name FROM agrokits").all();
     res.json(rows);
-  });
+  } catch (err) {
+    console.error("DB error:", err);
+    res.status(500).json({ error: "DB error" });
+  }
 });
 
 // socket.io connection logging
